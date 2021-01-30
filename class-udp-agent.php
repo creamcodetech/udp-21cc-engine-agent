@@ -3,7 +3,49 @@
 class Udp_Agent {
 
 	public function __construct() {
+
 		$this->hooks();
+
+		$data = $this->get_data();
+		$data_to_send = array();
+
+
+		echo '<pre>';
+		var_dump( $data['data'] );
+		echo '</pre>';
+
+
+		foreach( $data['data'] as $row ) {
+
+			foreach( $row['fields'] as $key => $value ) {
+
+				$val = isset( $value['value'] ) ? $value['value'] : '';
+				if ( 'no' === strtolower( $val ) ) {
+					$val = 0;
+				} elseif ( 'yes' === strtolower( $val ) ) {
+					$val = 1;
+				}
+
+				$data_to_send[ strtolower( $key ) ] = $val;
+
+			}
+
+		}
+
+
+		// $prev_key = 'wp_url';
+
+		// echo '<pre>';
+		// echo "ALTER TABLE `udp_agent_data` "; 
+		// foreach( $data_to_send as $key => $value ) {
+		// 	echo "ADD `" .strtolower($key) . "` INT NULL AFTER `{$prev_key}`, \n";
+		// 	$prev_key = strtolower( $key );
+		// }
+
+		// // var_dump( $data_to_send );
+
+		// echo '</pre>';
+		// die;
 	}
 	
 
@@ -91,11 +133,11 @@ class Udp_Agent {
 
 		$data = array();
 
-		$data[] = WP_Debug_Data::debug_data();
+		$data['data'] = WP_Debug_Data::debug_data();
 		$data['root_domain'] = parse_url( get_bloginfo( 'url' ) )['host'];
 		$data['admin_email'] = get_bloginfo( 'admin_email' );
 		$data['wp_url']      = get_bloginfo( 'wpurl' );
-		$data['url']         = get_bloginfo( 'url' );
+		$data['site_url']    = get_bloginfo( 'url' );
 
 		return $data;
 
