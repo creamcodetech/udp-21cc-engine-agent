@@ -2,50 +2,36 @@
 
 class Udp_Agent {
 
+	private $engine_url = 'http://localhost/woocommerce';
+
 	public function __construct() {
 
 		$this->hooks();
 
-		$data = $this->get_data();
-		$data_to_send = array();
 
+		// $data = $this->get_data();
+		// $data_to_send = array();
 
-		echo '<pre>';
-		var_dump( $data['data'] );
-		echo '</pre>';
+		// foreach( $data['data'] as $row ) {
 
+		// 	foreach( $row['fields'] as $key => $value ) {
 
-		foreach( $data['data'] as $row ) {
+		// 		$val = isset( $value['value'] ) ? $value['value'] : '';
+		// 		if ( 'no' === strtolower( $val ) ) {
+		// 			$val = 0;
+		// 		} elseif ( 'yes' === strtolower( $val ) ) {
+		// 			$val = 1;
+		// 		}
 
-			foreach( $row['fields'] as $key => $value ) {
+		// 		$data_to_send[ strtolower( $key ) ] = $val;
 
-				$val = isset( $value['value'] ) ? $value['value'] : '';
-				if ( 'no' === strtolower( $val ) ) {
-					$val = 0;
-				} elseif ( 'yes' === strtolower( $val ) ) {
-					$val = 1;
-				}
+		// 	}
 
-				$data_to_send[ strtolower( $key ) ] = $val;
-
-			}
-
-		}
-
-
-		// $prev_key = 'wp_url';
-
-		// echo '<pre>';
-		// echo "ALTER TABLE `udp_agent_data` "; 
-		// foreach( $data_to_send as $key => $value ) {
-		// 	echo "ADD `" .strtolower($key) . "` INT NULL AFTER `{$prev_key}`, \n";
-		// 	$prev_key = strtolower( $key );
 		// }
 
-		// // var_dump( $data_to_send );
+		// $data_to_send['wp_url'] = $data['wp_url'];
+		// $data_to_send['site_url'] = $data['site_url'];
 
-		// echo '</pre>';
-		// die;
 	}
 	
 
@@ -55,6 +41,27 @@ class Udp_Agent {
 
 	public function on_init() {
 		$this->ask_permission_for_usage_tracking();
+
+		if ( isset( $_GET['test']) ) {
+			$this->send_data_to_engine();
+
+			// echo '<pre>';
+			// var_dump( $this->get_data() );
+			// echo '</pre>';
+			// die;
+
+
+			// get column names
+
+			// global $wpdb;
+			// $response = $wpdb->get_col( "DESC udp_agent_data", 0 ); 
+
+			// echo '<pre>';
+			// var_dump( $response );
+			// echo '</pre>';
+			// die;
+
+		}
 	}
 
 
@@ -109,11 +116,28 @@ class Udp_Agent {
 
 	private function hooks() {
 		add_action( 'init', array( $this, 'on_init' ) );
-		// add_filter( 'override_load_textdomain', 'override_load_textdomain', 10, 2 );
 	}
 
 
 	private function send_data_to_engine() {
+
+		$data_to_send['udp_data'] = serialize( $this->get_data() );
+
+		$url = $this->engine_url . '/wp-json/udp-engine/v1/process-agent-data';
+
+		//open connection.
+		$ch = curl_init();
+
+		//set the url, number of POST vars, POST data.
+		curl_setopt( $ch, CURLOPT_URL, $url );
+		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt( $ch, CURLOPT_POSTFIELDS, $data_to_send );
+
+		//execute post.
+		$return = curl_exec( $ch );
+
+		//close connection
+		curl_close( $ch);
 
 	}
 
@@ -138,6 +162,7 @@ class Udp_Agent {
 		$data['admin_email'] = get_bloginfo( 'admin_email' );
 		$data['wp_url']      = get_bloginfo( 'wpurl' );
 		$data['site_url']    = get_bloginfo( 'url' );
+		$data['version']     = get_bloginfo('version');
 
 		return $data;
 
