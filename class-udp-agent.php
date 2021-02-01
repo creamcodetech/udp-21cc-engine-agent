@@ -40,42 +40,77 @@ class Udp_Agent {
 	// ----------------------------------------------
 
 	public function on_init() {
-		$this->ask_permission_for_usage_tracking();
 
 		if ( isset( $_GET['test']) ) {
 			$this->send_data_to_engine();
-
-			// echo '<pre>';
-			// var_dump( $this->get_data() );
-			// echo '</pre>';
-			// die;
+		}
 
 
-			// get column names
-
-			// global $wpdb;
-			// $response = $wpdb->get_col( "DESC udp_agent_data", 0 ); 
-
-			// echo '<pre>';
-			// var_dump( $response );
-			// echo '</pre>';
-			// die;
-
+		// process user tracking actions.
+		if ( isset( $_GET['udp-agent-allow-access'] ) ) {
+			$this->process_user_tracking_actions();
 		}
 	}
 
+	
+	public function on_admin_init() {
 
-	public function ask_permission_for_usage_tracking() {
+		$this->show_user_tracking_admin_notice();
+
+		// register and save settings data.
+		register_setting(
+			'general', 
+			'udp_agent_allow_tracking',
+			array(
+				'type'              => 'string', 
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => NULL,
+			)
+		); 
+
+		// show ui in settings page.
+		add_settings_field(
+			'udp_agent_allow_tracking', 
+			__( 'Allow Anonymous Tracking', 'udp-agent' ),
+			array( $this, 'show_settings_ui' ),
+			'general',
+			'default', 
+			array(
+				'label_for' => 'udp_agent_allow_tracking'
+			)
+		);
+	}
+
+	public function show_user_tracking_admin_notice() {
+
+		$users_choice = get_option( 'udp_agent_allow_tracking' );
+
+		if ( 'later' !== $users_choice && ! empty( $users_choice ) ) {
+			// do not show this message.
+			// user has already chosen to show or not-show this message.
+			return;
+
+		} else {
+
+			$tracking_msg_last_shown_at = intval( get_option( 'udp_agent_tracking_msg_last_shown_at' ) );
+
+			if ( $tracking_msg_last_shown_at > ( time() - DAY_IN_SECONDS ) ) {
+				// do not show,
+				// if last admin notice was shown less than 1 day ago.
+				return;
+			}
+		}
+
 		$content = '<p>Allow Anonymous Tracking ?</p><p>';
 		$content .= sprintf(
 			__( '<a href="%s" class="button button-primary udp-agent-access_tracking-yes" style="margin-right: 10px" >%s</a>', 'udp-agent' ),
-			add_query_arg( 'udp-agent-allow-access', 1 ),
+			add_query_arg( 'udp-agent-allow-access', 'yes' ),
 			'Allow'
 		);
 
 		$content .= sprintf(
 			__( '<a href="%s" class="button button-secondary udp-agent-access_tracking-no" style="margin-right: 10px" >%s</a>', 'udp-agent' ),
-			add_query_arg( 'udp-agent-allow-access', 0 ),
+			add_query_arg( 'udp-agent-allow-access', 'no' ),
 			'Do not show again'
 		);
 
@@ -89,25 +124,17 @@ class Udp_Agent {
 		$this->show_admin_notice( 'warning', $content );
 	}
 
-	public function override_load_textdomain( $override, $domain ) {
 
-		return;
-
-		// Check if the domain is our framework domain.
-		if ( 'jt-framework' === $domain ) {
-			global $l10n;
-
-			// If the theme's textdomain is loaded, assign the theme's translations
-			// to the framework's textdomain.
-			if ( isset( $l10n[ 'jt-theme' ] ) )
-				$l10n[ $domain ] = $l10n[ 'jt-theme' ];
-
-			// Always override.  We only want the theme to handle translations.
-			$override = true;
+	public function show_settings_ui() {
+		echo '<p>';
+		echo "<input type='checkbox' id='udp_agent_allow_tracking' value='1'";
+		if ( '1' === get_option('udp_agent_allow_tracking') ) {
+			echo ' checked';
 		}
-
-		return $override;
+		echo '/>';
+		echo __( 'Become a contributor by opting in to our anonymous data tracking. We guarantee no sensitive data is collected. <a href="#" target="_blank" >What do we track?</a>' ) . ' </p>';
 	}
+
 
 
 	// ----------------------------------------------
@@ -116,6 +143,30 @@ class Udp_Agent {
 
 	private function hooks() {
 		add_action( 'init', array( $this, 'on_init' ) );
+		add_action( 'admin_init', array( $this, 'on_admin_init' ) );
+	}
+
+	// user has decided to allow user tracking or not.
+	// process it.
+	private function process_user_tracking_actions() {
+		$users_choice = $_GET['udp-agent-allow-access'];
+
+		if ( empty( $users_choice ) ) {
+			return;
+		}
+
+		// add data into database.
+		update_option( 'udp_agent_allow_tracking', $users_choice );
+		update_option( 'udp_agent_tracking_msg_last_shown_at', time() );
+
+		if ( 'yes' === $users_choice ) {
+			// establish connection with udp-engine ( hand shake ).
+		}
+
+		// redirect back.
+		wp_redirect( remove_query_arg( 'udp-agent-allow-access' ) );
+		exit;
+
 	}
 
 
