@@ -8,30 +8,6 @@ class Udp_Agent {
 
 		$this->hooks();
 
-
-		// $data = $this->get_data();
-		// $data_to_send = array();
-
-		// foreach( $data['data'] as $row ) {
-
-		// 	foreach( $row['fields'] as $key => $value ) {
-
-		// 		$val = isset( $value['value'] ) ? $value['value'] : '';
-		// 		if ( 'no' === strtolower( $val ) ) {
-		// 			$val = 0;
-		// 		} elseif ( 'yes' === strtolower( $val ) ) {
-		// 			$val = 1;
-		// 		}
-
-		// 		$data_to_send[ strtolower( $key ) ] = $val;
-
-		// 	}
-
-		// }
-
-		// $data_to_send['wp_url'] = $data['wp_url'];
-		// $data_to_send['site_url'] = $data['site_url'];
-
 	}
 	
 
@@ -146,7 +122,7 @@ class Udp_Agent {
 		add_action( 'admin_init', array( $this, 'on_admin_init' ) );
 	}
 
-	// user has decided to allow user tracking or not.
+	// user has decided to allow or not allow user tracking.
 	// process it.
 	private function process_user_tracking_actions() {
 		$users_choice = $_GET['udp-agent-allow-access'];
