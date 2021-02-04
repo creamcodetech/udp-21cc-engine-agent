@@ -2,8 +2,6 @@
 
 class Udp_Agent {
 
-	private $engine_url = 'http://localhost/woocommerce';
-
 	public function __construct() {
 
 		$this->hooks();
@@ -18,6 +16,7 @@ class Udp_Agent {
 	public function on_init() {
 
 		if ( isset( $_GET['test']) ) {
+			// $this->udp_agent_is_activated();
 			$this->send_data_to_engine();
 		}
 
@@ -111,6 +110,45 @@ class Udp_Agent {
 		echo __( 'Become a contributor by opting in to our anonymous data tracking. We guarantee no sensitive data is collected. <a href="#" target="_blank" >What do we track?</a>' ) . ' </p>';
 	}
 
+	
+	// our theme is activated.
+	public function udp_agent_is_activated() {
+
+		$track_user = get_option( 'udp_agent_allow_tracking' );
+		if ( 'yes' !== $track_user ) { 
+			// do not collect user data.
+			return;
+		}
+
+		$secret_key = get_option( 'udp_agent_secret_key' );
+		$installed_agent_version = get_option( 'udp_agent_version' );
+
+		if ( ! empty( $secret_key ) && ! empty( $installed_agent_version ) && floatval( UDP_AGENT_VERSION ) === floatval( $installed_agent_version ) ) {
+
+			// secret_key and installed_agent_version already exists.
+			// agent version is also same.
+			return;
+		}
+
+		// handshake with engine.
+
+		$data['site_url'] = get_bloginfo( 'url' );
+		$url = UDP_API_URL . '/wp-json/udp-engine/v1/handshake';
+
+		// get secret key from engine.
+		$secret_key = json_decode( $this->do_curl( $url, $data ) );
+
+		if ( empty( $secret_key ) ) {
+			error_log( __FUNCTION__ . ' : Cannot get secret key from engine.' );
+			return;
+		}
+
+		// save secret_key into db.
+		update_option( 'udp_agent_secret_key', $secret_key );
+		update_option( 'udp_agent_version', UDP_AGENT_VERSION );
+
+	}
+
 
 
 	// ----------------------------------------------
@@ -120,7 +158,15 @@ class Udp_Agent {
 	private function hooks() {
 		add_action( 'init', array( $this, 'on_init' ) );
 		add_action( 'admin_init', array( $this, 'on_admin_init' ) );
+
+		// if udp agent is theme.
+		add_action( 'after_switch_theme', array( $this, 'udp_agent_is_activated' ) );
+
+		// custom cron.
+		add_action( 'init', array( $this, 'udp_schedule_cron' ) );
 	}
+
+
 
 	// user has decided to allow or not allow user tracking.
 	// process it.
@@ -146,27 +192,7 @@ class Udp_Agent {
 	}
 
 
-	private function send_data_to_engine() {
-
-		$data_to_send['udp_data'] = serialize( $this->get_data() );
-
-		$url = $this->engine_url . '/wp-json/udp-engine/v1/process-agent-data';
-
-		//open connection.
-		$ch = curl_init();
-
-		//set the url, number of POST vars, POST data.
-		curl_setopt( $ch, CURLOPT_URL, $url );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, $data_to_send );
-
-		//execute post.
-		$return = curl_exec( $ch );
-
-		//close connection
-		curl_close( $ch);
-
-	}
+	
 
 	private function get_data() {
 
@@ -205,6 +231,76 @@ class Udp_Agent {
 				printf( '<div class="%1$s">%2$s</div>', esc_attr( $class ), $msg );
 			}
 		);
+	}
+
+
+	
+
+
+	// ------------------------------------------------
+	// Cron
+	// ------------------------------------------------
+
+	/**
+	 * Custom cron job, runs daily
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function udp_schedule_cron() {
+
+		$cron_hook_name = 'udp_agent_cron';
+		add_action( $cron_hook_name, array( $this, 'send_data_to_engine' ) );
+
+		if ( ! wp_next_scheduled( $cron_hook_name ) ) {
+			wp_schedule_event( time(), 'daily', $cron_hook_name );
+		}
+
+	}
+
+	/**
+	 * Custom cron job callback function.
+	 * Send data collected from agent to engine.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function send_data_to_engine() {
+
+		$track_user = get_option( 'udp_agent_allow_tracking' );
+
+		if ( 'yes' !== $track_user ) { 
+			// do not send data.
+			return;
+		}
+
+		$data_to_send['udp_data'] = serialize( $this->get_data() );
+		$data_to_send['secret_key'] = get_option( 'udp_agent_secret_key' );
+		$url = UDP_API_URL . '/wp-json/udp-engine/v1/process-agent-data';
+
+		echo '<pre>';
+		var_dump( $this->do_curl( $url, $data_to_send ) );
+		die;
+	}
+
+
+	// A little helper function to do curl request.	
+	private function do_curl( $url, $data_to_send ) {
+		// open connection.
+		$ch = curl_init();
+
+		// set the url, number of POST vars, POST data.
+		curl_setopt( $ch, CURLOPT_URL, $url );
+		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt( $ch, CURLOPT_POSTFIELDS, $data_to_send );
+
+		// execute post.
+		$response = curl_exec( $ch );
+
+		// close connection
+		curl_close( $ch);
+
+		return $response;
 	}
 
 }
