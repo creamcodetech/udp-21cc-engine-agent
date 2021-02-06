@@ -2,15 +2,14 @@
 
 class Udp_Agent {
 
-	private $version;
 	private $agent_name;
 	private $engine_url;
+	private $agent_root_dir;
 
-	public function __construct( $ver, $name, $engine_url ) {
+	public function __construct( $agent_root_dir, $engine_url ) {
 
-		$this->version    = $ver;
-		$this->agent_name = $name;
-		$this->engine_url = $engine_url;
+		$this->engine_url     = $engine_url;
+		$this->agent_root_dir = $agent_root_dir;
 
 		$this->hooks();
 	}
@@ -33,7 +32,7 @@ class Udp_Agent {
 
 		// process user tracking actions.
 		if ( isset( $_GET['udp-agent-allow-access'] ) ) {
-			$this->process_user_tracking_actions();
+			$this->process_user_tracking_choice();
 		}
 
 	}
@@ -108,7 +107,11 @@ class Udp_Agent {
 			}
 		}
 
-		$content = '<p>' . sprintf( __( '%s is asking to allow anonymous tracking ?', 'udp-agent' ), $this->agent_name ) . '</p><p>';
+		$content = '<p>' . sprintf( 
+			__( '%s is asking to allow anonymous tracking ?', 'udp-agent' ), 
+			$this->find_agent_name( $this->agent_root_dir )
+		) . '</p><p>';
+
 		$content .= sprintf(
 			__( '<a href="%s" class="button button-primary udp-agent-access_tracking-yes" style="margin-right: 10px" >%s</a>', 'udp-agent' ),
 			add_query_arg( 'udp-agent-allow-access', 'yes' ),
@@ -133,8 +136,8 @@ class Udp_Agent {
 
 	// user has decided to allow or not allow user tracking.
 	// process it.
-	private function process_user_tracking_actions() {
-		$users_choice = $_GET['udp-agent-allow-access'];
+	private function process_user_tracking_choice() {
+		$users_choice = isset( $_GET['udp-agent-allow-access'] ) ? sanitize_text_field( wp_unslash( $_GET['udp-agent-allow-access'] ) ) : '';
 
 		if ( empty( $users_choice ) ) {
 			return;
@@ -143,10 +146,6 @@ class Udp_Agent {
 		// add data into database.
 		update_option( 'udp_agent_allow_tracking', $users_choice );
 		update_option( 'udp_agent_tracking_msg_last_shown_at', time() );
-
-		if ( 'yes' === $users_choice ) {
-			// establish connection with udp-engine ( hand shake ).
-		}
 
 		// redirect back.
 		wp_redirect( remove_query_arg( 'udp-agent-allow-access' ) );
@@ -233,6 +232,36 @@ class Udp_Agent {
 		return true;
 
 	}
+
+
+	// get agent name
+    private function find_agent_name( $root_dir ) {
+
+		if ( ! empty( $this->agent_name ) ) {
+			return $this->agent_name;
+		}
+
+		$agent_name = '';
+
+        if ( file_exists( $root_dir .'/functions.php' ) ) {
+            // it is a theme
+            // return get_style
+
+            $my_theme = wp_get_theme( basename( $root_dir ) );
+            if ( $my_theme->exists() ) {
+                $agent_name = $my_theme->get( 'Name' );
+				
+            }
+			
+        } else {
+			// it is a plugin.
+			// $plugin_data = get_plugin_data( __FILE__ );
+			// $plugin_name = $plugin_data['Name'];
+        }
+		
+		$this->agent_name = $agent_name;
+		return $agent_name;
+    }
 
 
 	// ------------------------------------------------

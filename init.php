@@ -5,7 +5,6 @@ global $this_agent_ver;
 $engine_url           = 'http://localhost/woocommerce';
 $root_dir             = dirname( __DIR__, 1 );
 $this_agent_ver       = 1.0;
-$this_agent_name      = basename( $root_dir );
 $all_installed_agents = get_option( 'udp_installed_agents', array() );
 $this_agent_is_latest = true;
 
@@ -22,7 +21,7 @@ if ( $this_agent_is_latest ) {
 
     if ( ! class_exists( 'Udp_Agent' ) ) {
         require_once __DIR__ . '/class-udp-agent.php';
-        new Udp_Agent( $this_agent_ver, $this_agent_name, $engine_url );
+        new Udp_Agent( $root_dir, $engine_url );
     }
 
 }
@@ -50,11 +49,4 @@ if ( ! function_exists( 'udp_agent_is_activated_v1' ) ) {
 
     }
 
-}
-
-if ( ! function_exists( 'is_udp_agent_theme')) {
-
-    function is_udp_agent_theme( $base_url ) {
-        
-    }
 }
