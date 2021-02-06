@@ -1,18 +1,60 @@
-<?PHP
-require_once __DIR__ . '/class-udp-agent.php';
+<?php
 
-// define constants here
-if ( ! defined( 'UDP_API_URL' ) ) {
-    define( 'UDP_API_URL', 'http://localhost/woocommerce' );
+global $this_agent_ver;
+
+$engine_url           = 'http://localhost/woocommerce';
+$root_dir             = dirname( __DIR__, 1 );
+$this_agent_ver       = 1.0;
+$this_agent_name      = basename( $root_dir );
+$all_installed_agents = get_option( 'udp_installed_agents', array() );
+$this_agent_is_latest = true;
+
+// make sure this agent is the latest.
+foreach ( $all_installed_agents as $agent_name => $agent_ver ) {
+    if ( $this_agent_ver < $agent_ver ) {
+        $this_agent_is_latest = false;
+        break;
+    }
 }
 
-if ( ! defined( 'UDP_AGENT_VERSION' ) ) {
-    define( 'UDP_AGENT_VERSION', 1.0 );
+// load this agent, only if it is the latest version.
+if ( $this_agent_is_latest ) {
+
+    if ( ! class_exists( 'Udp_Agent' ) ) {
+        require_once __DIR__ . '/class-udp-agent.php';
+        new Udp_Agent( $this_agent_ver, $this_agent_name, $engine_url );
+    }
+
 }
 
-register_activation_hook( __DIR__ . DIRECTORY_SEPARATOR .  basename( __DIR__ ) . '.php', function(){
+// activation hook for plugin.
+register_activation_hook( $root_dir . DIRECTORY_SEPARATOR .  basename( $root_dir ) . '.php', 'udp_agent_is_activated_v1' );
 
-    // this will work, only if agent is plugin.
-    $agent = new Udp_Agent();
-    $agent->udp_agent_is_activated(  );
-} );
+// activation hook for theme.
+add_action( 'after_switch_theme', 'udp_agent_is_activated_v1' );
+
+if ( ! function_exists( 'udp_agent_is_activated_v1' ) ) {
+    
+    // activation hook callback
+    // suffix is intentional.
+    function udp_agent_is_activated_v1() {
+
+        global $this_agent_ver;
+
+        $root_dir = dirname( __DIR__, 1 );
+        $installed_agents = get_option( 'udp_installed_agents', array() );
+
+        $installed_agents[ basename( $root_dir ) ] = $this_agent_ver;
+
+        update_option( 'udp_installed_agents', $installed_agents );
+
+    }
+
+}
+
+if ( ! function_exists( 'is_udp_agent_theme')) {
+
+    function is_udp_agent_theme( $base_url ) {
+        
+    }
+}

@@ -2,29 +2,40 @@
 
 class Udp_Agent {
 
-	public function __construct() {
+	private $version;
+	private $agent_name;
+	private $engine_url;
+
+	public function __construct( $ver, $name, $engine_url ) {
+
+		$this->version    = $ver;
+		$this->agent_name = $name;
+		$this->engine_url = $engine_url;
 
 		$this->hooks();
-
 	}
 	
 
 	// ----------------------------------------------
-	// public callable functions
+	// Hooks.
 	// ----------------------------------------------
 
+	// all hooks will be called from this method.
+	private function hooks() {
+		add_action( 'init', array( $this, 'on_init' ) );
+		add_action( 'admin_init', array( $this, 'on_admin_init' ) );
+
+		// custom cron.
+		add_action( 'init', array( $this, 'udp_schedule_cron' ) );
+	}
+
 	public function on_init() {
-
-		if ( isset( $_GET['test']) ) {
-			// $this->udp_agent_is_activated();
-			$this->send_data_to_engine();
-		}
-
 
 		// process user tracking actions.
 		if ( isset( $_GET['udp-agent-allow-access'] ) ) {
 			$this->process_user_tracking_actions();
 		}
+
 	}
 
 	
@@ -56,6 +67,27 @@ class Udp_Agent {
 		);
 	}
 
+
+	// ----------------------------------------------
+	// Settings page UI.
+	// ----------------------------------------------
+
+	public function show_settings_ui() {
+		echo '<p>';
+		echo "<input type='checkbox' id='udp_agent_allow_tracking' value='1'";
+		if ( 'yes' === get_option('udp_agent_allow_tracking') ) {
+			echo ' checked';
+		}
+		echo '/>';
+		echo __( 'Become a contributor by opting in to our anonymous data tracking. We guarantee no sensitive data is collected. <a href="#" target="_blank" >What do we track?</a>' ) . ' </p>';
+	}
+
+
+	// ----------------------------------------------
+	// Show admin notice, for collecting user data.
+	// ----------------------------------------------
+
+	// show admin notice to collect user data.
 	public function show_user_tracking_admin_notice() {
 
 		$users_choice = get_option( 'udp_agent_allow_tracking' );
@@ -76,7 +108,7 @@ class Udp_Agent {
 			}
 		}
 
-		$content = '<p>Allow Anonymous Tracking ?</p><p>';
+		$content = '<p>' . sprintf( __( '%s is asking to allow anonymous tracking ?', 'udp-agent' ), $this->agent_name ) . '</p><p>';
 		$content .= sprintf(
 			__( '<a href="%s" class="button button-primary udp-agent-access_tracking-yes" style="margin-right: 10px" >%s</a>', 'udp-agent' ),
 			add_query_arg( 'udp-agent-allow-access', 'yes' ),
@@ -98,75 +130,6 @@ class Udp_Agent {
 		$content .= '</p>';
 		$this->show_admin_notice( 'warning', $content );
 	}
-
-
-	public function show_settings_ui() {
-		echo '<p>';
-		echo "<input type='checkbox' id='udp_agent_allow_tracking' value='1'";
-		if ( '1' === get_option('udp_agent_allow_tracking') ) {
-			echo ' checked';
-		}
-		echo '/>';
-		echo __( 'Become a contributor by opting in to our anonymous data tracking. We guarantee no sensitive data is collected. <a href="#" target="_blank" >What do we track?</a>' ) . ' </p>';
-	}
-
-	
-	// our theme is activated.
-	public function udp_agent_is_activated() {
-
-		$track_user = get_option( 'udp_agent_allow_tracking' );
-		if ( 'yes' !== $track_user ) { 
-			// do not collect user data.
-			return;
-		}
-
-		$secret_key = get_option( 'udp_agent_secret_key' );
-		$installed_agent_version = get_option( 'udp_agent_version' );
-
-		if ( ! empty( $secret_key ) && ! empty( $installed_agent_version ) && floatval( UDP_AGENT_VERSION ) === floatval( $installed_agent_version ) ) {
-
-			// secret_key and installed_agent_version already exists.
-			// agent version is also same.
-			return;
-		}
-
-		// handshake with engine.
-
-		$data['site_url'] = get_bloginfo( 'url' );
-		$url = UDP_API_URL . '/wp-json/udp-engine/v1/handshake';
-
-		// get secret key from engine.
-		$secret_key = json_decode( $this->do_curl( $url, $data ) );
-
-		if ( empty( $secret_key ) ) {
-			error_log( __FUNCTION__ . ' : Cannot get secret key from engine.' );
-			return;
-		}
-
-		// save secret_key into db.
-		update_option( 'udp_agent_secret_key', $secret_key );
-		update_option( 'udp_agent_version', UDP_AGENT_VERSION );
-
-	}
-
-
-
-	// ----------------------------------------------
-	// private functions
-	// ----------------------------------------------
-
-	private function hooks() {
-		add_action( 'init', array( $this, 'on_init' ) );
-		add_action( 'admin_init', array( $this, 'on_admin_init' ) );
-
-		// if udp agent is theme.
-		add_action( 'after_switch_theme', array( $this, 'udp_agent_is_activated' ) );
-
-		// custom cron.
-		add_action( 'init', array( $this, 'udp_schedule_cron' ) );
-	}
-
-
 
 	// user has decided to allow or not allow user tracking.
 	// process it.
@@ -191,8 +154,22 @@ class Udp_Agent {
 
 	}
 
+	// a little helper function to show admin notice.
+	private function show_admin_notice( $error_class, $msg ) {
+		
+		add_action(
+			'admin_notices',
+			function() use( $error_class, $msg ) {
+				$class = 'is-dismissible  notice notice-' . $error_class;
+				printf( '<div class="%1$s">%2$s</div>', esc_attr( $class ), $msg );
+			}
+		);
+	}
 
-	
+
+	// ----------------------------------------------
+	// Data collection and authentication with engine.
+	// ----------------------------------------------
 
 	private function get_data() {
 
@@ -222,19 +199,40 @@ class Udp_Agent {
 	}
 
 
-	private function show_admin_notice( $error_class, $msg ) {
-		
-		add_action(
-			'admin_notices',
-			function() use( $error_class, $msg ) {
-				$class = 'is-dismissible  notice notice-' . $error_class;
-				printf( '<div class="%1$s">%2$s</div>', esc_attr( $class ), $msg );
-			}
-		);
+	// authenticate with engine server.
+	// get secret key from engine.
+	// run only once.
+	private function do_handshake() {
+
+		// secret key will be same for all agents.
+		$secret_key = get_option( 'udp_agent_secret_key' );
+
+		if ( ! empty( $secret_key ) ) {
+
+			// secret_key already exists.
+			// do nothing.
+			return true;
+		}
+
+		// authenticate with engine.
+
+		$data['site_url'] = get_bloginfo( 'url' );
+		$url = $this->engine_url . '/wp-json/udp-engine/v1/handshake';
+
+		// get secret key from engine.
+		$secret_key = json_decode( $this->do_curl( $url, $data ) );
+
+		if ( empty( $secret_key ) ) {
+			error_log( __FUNCTION__ . ' : Cannot get secret key from engine.' );
+			return false;
+		}
+
+		// save secret_key into db.
+		update_option( 'udp_agent_secret_key', $secret_key );
+
+		return true;
+
 	}
-
-
-	
 
 
 	// ------------------------------------------------
@@ -264,6 +262,7 @@ class Udp_Agent {
 	 *
 	 * @return void
 	 * @since 1.0.0
+	 * @return void
 	 */
 	private function send_data_to_engine() {
 
@@ -274,13 +273,18 @@ class Udp_Agent {
 			return;
 		}
 
+		if ( ! $this->do_handshake() ) {
+			// trouble conneting to engine.
+			// will retry again in next cron job.
+			return;
+		}
+
 		$data_to_send['udp_data'] = serialize( $this->get_data() );
 		$data_to_send['secret_key'] = get_option( 'udp_agent_secret_key' );
-		$url = UDP_API_URL . '/wp-json/udp-engine/v1/process-agent-data';
+		$url = $this->engine_url . '/wp-json/udp-engine/v1/process-agent-data';
 
-		echo '<pre>';
-		var_dump( $this->do_curl( $url, $data_to_send ) );
-		die;
+		exit;
+
 	}
 
 
@@ -289,7 +293,7 @@ class Udp_Agent {
 		// open connection.
 		$ch = curl_init();
 
-		// set the url, number of POST vars, POST data.
+		// set the url, POST data.
 		curl_setopt( $ch, CURLOPT_URL, $url );
 		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
 		curl_setopt( $ch, CURLOPT_POSTFIELDS, $data_to_send );
@@ -304,5 +308,3 @@ class Udp_Agent {
 	}
 
 }
-
-new Udp_Agent();
