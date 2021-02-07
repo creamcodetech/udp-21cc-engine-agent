@@ -2,18 +2,21 @@
 
 class Udp_Agent {
 
+	private $version;
 	private $agent_name;
 	private $engine_url;
 	private $agent_root_dir;
 
-	public function __construct( $agent_root_dir, $engine_url ) {
+	public function __construct( $ver, $agent_root_dir, $engine_url ) {
 
+		$this->version        = $ver;
 		$this->engine_url     = $engine_url;
 		$this->agent_root_dir = $agent_root_dir;
 
 		$this->hooks();
+
 	}
-	
+
 
 	// ----------------------------------------------
 	// Hooks.
@@ -36,7 +39,6 @@ class Udp_Agent {
 		}
 
 	}
-
 	
 	public function on_admin_init() {
 
@@ -89,12 +91,22 @@ class Udp_Agent {
 	// show admin notice to collect user data.
 	public function show_user_tracking_admin_notice() {
 
+		$show_admin_notice = true;
 		$users_choice = get_option( 'udp_agent_allow_tracking' );
+		$active_agent_basename = get_option( 'udp_active_agent_basename' );
 
 		if ( 'later' !== $users_choice && ! empty( $users_choice ) ) {
-			// do not show this message.
-			// user has already chosen to show or not-show this message.
-			return;
+
+			// user has already clicked "yes" or "no" in admin notice.
+			// do not show this notice.
+			$show_admin_notice = false;
+
+			// override.
+			if ( 'no' === $users_choice && basename( $this->agent_root_dir ) !== $active_agent_basename ) {
+				// user selected "no" for another agent.
+				// show notice again.
+				$show_admin_notice = true;
+			}
 
 		} else {
 
@@ -103,8 +115,12 @@ class Udp_Agent {
 			if ( $tracking_msg_last_shown_at > ( time() - DAY_IN_SECONDS ) ) {
 				// do not show,
 				// if last admin notice was shown less than 1 day ago.
-				return;
+				$show_admin_notice = false;
 			}
+		}
+
+		if ( ! $show_admin_notice ) {
+			return;
 		}
 
 		$content = '<p>' . sprintf( 
@@ -134,6 +150,8 @@ class Udp_Agent {
 		$this->show_admin_notice( 'warning', $content );
 	}
 
+
+
 	// user has decided to allow or not allow user tracking.
 	// process it.
 	private function process_user_tracking_choice() {
@@ -146,6 +164,7 @@ class Udp_Agent {
 		// add data into database.
 		update_option( 'udp_agent_allow_tracking', $users_choice );
 		update_option( 'udp_agent_tracking_msg_last_shown_at', time() );
+		update_option( 'udp_active_agent_basename', basename( $this->agent_root_dir ) );
 
 		// redirect back.
 		wp_redirect( remove_query_arg( 'udp-agent-allow-access' ) );
