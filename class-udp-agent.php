@@ -2,6 +2,7 @@
 
 class Udp_Agent {
 
+	private $curl_in_progress = false;
 	private $version;
 	private $agent_name;
 	private $engine_url;
@@ -221,7 +222,7 @@ class Udp_Agent {
 	// authenticate with engine server.
 	// get secret key from engine.
 	// run only once.
-	private function do_handshake() {
+	public function do_handshake() {
 
 		// secret key will be same for all agents.
 		$secret_key = get_option( 'udp_agent_secret_key' );
@@ -248,6 +249,8 @@ class Udp_Agent {
 
 		// save secret_key into db.
 		update_option( 'udp_agent_secret_key', $secret_key );
+
+		error_log( $secret_key );
 
 		return true;
 
@@ -320,7 +323,7 @@ class Udp_Agent {
 	 * @since 1.0.0
 	 * @return void
 	 */
-	private function send_data_to_engine() {
+	public function send_data_to_engine() {
 
 		$track_user = get_option( 'udp_agent_allow_tracking' );
 
@@ -332,6 +335,7 @@ class Udp_Agent {
 		if ( ! $this->do_handshake() ) {
 			// trouble conneting to engine.
 			// will retry again in next cron job.
+			error_log( 'cannot connect with engine' );
 			return;
 		}
 
@@ -339,6 +343,7 @@ class Udp_Agent {
 		$data_to_send['secret_key'] = get_option( 'udp_agent_secret_key' );
 		$url = $this->engine_url . '/wp-json/udp-engine/v1/process-agent-data';
 
+		$this->do_curl( $url, $data_to_send );
 		exit;
 
 	}
