@@ -49,9 +49,7 @@ class Udp_Agent {
 			'general', 
 			'udp_agent_allow_tracking',
 			array(
-				'type'              => 'string', 
-				'sanitize_callback' => 'sanitize_text_field',
-				'default'           => NULL,
+				'sanitize_callback' => array( $this, 'get_settings_field_val' ),
 			)
 		); 
 
@@ -69,13 +67,23 @@ class Udp_Agent {
 	}
 
 
+	public function get_settings_field_val( $data ) {
+		if ( '1' === $data ) {
+			return 'yes';
+		} else {
+			return 'no';
+		}
+
+	}
+
+
 	// ----------------------------------------------
 	// Settings page UI.
 	// ----------------------------------------------
 
 	public function show_settings_ui() {
 		echo '<p>';
-		echo "<input type='checkbox' id='udp_agent_allow_tracking' value='1'";
+		echo "<input type='checkbox' name='udp_agent_allow_tracking' id='udp_agent_allow_tracking' value='1'";
 		if ( 'yes' === get_option('udp_agent_allow_tracking') ) {
 			echo ' checked';
 		}
@@ -93,20 +101,12 @@ class Udp_Agent {
 
 		$show_admin_notice = true;
 		$users_choice = get_option( 'udp_agent_allow_tracking' );
-		$active_agent_basename = get_option( 'udp_active_agent_basename' );
 
 		if ( 'later' !== $users_choice && ! empty( $users_choice ) ) {
 
 			// user has already clicked "yes" or "no" in admin notice.
 			// do not show this notice.
 			$show_admin_notice = false;
-
-			// override.
-			if ( 'no' === $users_choice && basename( $this->agent_root_dir ) !== $active_agent_basename ) {
-				// user selected "no" for another agent.
-				// show notice again.
-				$show_admin_notice = true;
-			}
 
 		} else {
 
@@ -117,6 +117,7 @@ class Udp_Agent {
 				// if last admin notice was shown less than 1 day ago.
 				$show_admin_notice = false;
 			}
+
 		}
 
 		if ( ! $show_admin_notice ) {
@@ -164,7 +165,7 @@ class Udp_Agent {
 		// add data into database.
 		update_option( 'udp_agent_allow_tracking', $users_choice );
 		update_option( 'udp_agent_tracking_msg_last_shown_at', time() );
-		update_option( 'udp_active_agent_basename', basename( $this->agent_root_dir ) );
+		// update_option( 'udp_active_agent_basename', basename( $this->agent_root_dir ) );
 
 		// redirect back.
 		wp_redirect( remove_query_arg( 'udp-agent-allow-access' ) );
@@ -262,7 +263,7 @@ class Udp_Agent {
 
 		$agent_name = '';
 
-        if ( file_exists( $root_dir .'/functions.php' ) ) {
+        if ( file_exists( $root_dir . '/functions.php' ) ) {
             // it is a theme
             // return get_style
 
@@ -274,8 +275,15 @@ class Udp_Agent {
 			
         } else {
 			// it is a plugin.
-			// $plugin_data = get_plugin_data( __FILE__ );
-			// $plugin_name = $plugin_data['Name'];
+			$plugin_file = $this->agent_root_dir . DIRECTORY_SEPARATOR .  basename( $this->agent_root_dir ) . '.php';
+			$plugin_data = get_file_data(
+				$plugin_file,
+				array(
+					'name' => 'Plugin Name',
+				)
+			);
+
+			$agent_name = $plugin_data['name'];
         }
 		
 		$this->agent_name = $agent_name;

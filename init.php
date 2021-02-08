@@ -6,19 +6,92 @@ global $this_agent_ver;
 // Config
 // -------------------------------------------
 
-$engine_url           = 'http://localhost/woocommerce';
-$root_dir             = dirname( __DIR__, 1 );
-$this_agent_ver       = 1.0;
+$engine_url     = 'http://localhost/woocommerce';
+$this_agent_ver = 1.0;
+$root_dir       = dirname( __DIR__, 1 );
+
+// -------------------------------------------
+// Agent Activation
+// -------------------------------------------
+
+// for plugin.
+register_activation_hook( $root_dir . DIRECTORY_SEPARATOR .  basename( $root_dir ) . '.php', function() {
+	global $this_agent_ver;
+	$root_dir = dirname( __DIR__, 1 );
+
+	$installed_agents = get_option( 'udp_installed_agents', array() );
+	
+	$installed_agents[ basename( $root_dir ) ] = $this_agent_ver;
+	update_option( 'udp_installed_agents', $installed_agents );
+	
+	// show admin notice if user selected "no" but new agent is installed.
+	$show_admin_notice = get_option( 'udp_agent_allow_tracking' );
+	if ( 'no' === $show_admin_notice ) {
+		$active_agent = get_option( 'udp_active_agent_basename' );
+		if ( basename( $root_dir ) !== $active_agent ) {
+			update_option( 'udp_active_agent_basename', basename( $root_dir ) );
+			delete_option( 'udp_agent_allow_tracking' );
+		}
+	}
+} );
+
+// for theme.
+add_action( 'after_switch_theme', function() {
+	global $this_agent_ver;
+	$root_dir = dirname( __DIR__, 1 );
+
+	$installed_agents = get_option( 'udp_installed_agents', array() );
+	
+	$installed_agents[ basename( $root_dir ) ] = $this_agent_ver;
+	update_option( 'udp_installed_agents', $installed_agents );
+	
+	// show admin notice if user selected "no" but new agent is installed.
+	$show_admin_notice = get_option( 'udp_agent_allow_tracking' );
+	if ( 'no' === $show_admin_notice ) {
+		$active_agent = get_option( 'udp_active_agent_basename' );
+		if ( basename( $root_dir ) !== $active_agent ) {
+			update_option( 'udp_active_agent_basename', basename( $root_dir ) );
+			delete_option( 'udp_agent_allow_tracking' );
+		}
+	}
+} );
+
+// -------------------------------------------
+// Agent De-activation
+// -------------------------------------------
+
+// for plugin.
+register_deactivation_hook( $root_dir . DIRECTORY_SEPARATOR .  basename( $root_dir ) . '.php', function () {
+	global $this_agent_ver;
+
+	$root_dir = dirname( __DIR__, 1 );
+
+	$installed_agents = get_option( 'udp_installed_agents', array() );
+	if ( isset( $installed_agents[ basename( $root_dir ) ] ) ) {
+		unset( $installed_agents[ basename( $root_dir ) ] );
+	}
+	update_option( 'udp_installed_agents', $installed_agents );
+} );
+
+// for theme.
+add_action( 'switch_theme', function () {
+	global $this_agent_ver;
+
+	$root_dir = dirname( __DIR__, 1 );
+
+	$installed_agents = get_option( 'udp_installed_agents', array() );
+	if ( isset( $installed_agents[ basename( $root_dir ) ] ) ) {
+		unset( $installed_agents[ basename( $root_dir ) ] );
+	}
+	update_option( 'udp_installed_agents', $installed_agents );
+} );
+
+// -------------------------------------------
+// Which agent to load ?
+// -------------------------------------------
+
 $all_installed_agents = get_option( 'udp_installed_agents', array() );
 $this_agent_is_latest = true;
-
-echo '<pre>';
-var_dump( $all_installed_agents );
-echo '</pre>';
-
-// -------------------------------------------
-// Do not edit from here
-// -------------------------------------------
 
 // make sure this agent is the latest.
 foreach ( $all_installed_agents as $agent_ver ) {
@@ -29,18 +102,11 @@ foreach ( $all_installed_agents as $agent_ver ) {
 }
 
 // load this agent, only if it is the latest version.
+// this agent is installed.
 if ( $this_agent_is_latest && isset( $all_installed_agents[ basename( $root_dir ) ] ) ) {
-
+	
     if ( ! class_exists( 'Udp_Agent' ) ) {
         require_once __DIR__ . '/class-udp-agent.php';
         new Udp_Agent( $this_agent_ver, $root_dir, $engine_url );
     }
-    
-    // -------------------------------------------
-    // Agent Activation
-    // -------------------------------------------
-    
-    require_once __DIR__ . '/class-udp-agent-activation.php'; 
-    new Udp_Agent_Activation( $this_agent_ver );
-
 }
