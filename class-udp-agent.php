@@ -1,13 +1,57 @@
 <?php
+/**
+ * This plugin gathers users anonymous data and send to engine.
+ *
+ * @link       #
+ * @since      1.0.0
+ *
+ * @package    Udp_21cc_Engine_Agent
+ */
 
+/**
+ * This plugin gathers users anonymous data and send to engine.
+ *
+ * @package    Udp_21cc_Engine_Agent
+ * @author     Cream Code Technology <info@creamcodetechnology.com>
+ */
 class Udp_Agent {
 
-	private $curl_in_progress = false;
-	private $version;
+	/**
+	 * Name of this agents parent.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 * @var      string $agent_name Name of this agents parent.
+	 */
 	private $agent_name;
+
+	/**
+	 * Engine URL.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 * @var      string $engine url URL to send wp rest api connection request.
+	 */
 	private $engine_url;
+
+	/**
+	 * Agent's parent folder location
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 * @var      string $agent_root_dir Path to this agents parent folder.
+	 */
 	private $agent_root_dir;
 
+
+	/**
+	 * Initialize the class and set its properties.
+	 *
+	 * @since    1.0.0
+	 * @param      string    $ver            Version of this agent.
+	 * @param      string    $engine_url     URL to Engine server.
+	 * @param      string    $agent_root_dir Path to this agents parent folder.
+	 */
 	public function __construct( $ver, $agent_root_dir, $engine_url ) {
 
 		$this->version        = $ver;
@@ -23,7 +67,11 @@ class Udp_Agent {
 	// Hooks.
 	// ----------------------------------------------
 
-	// all hooks will be called from this method.
+	/**
+	 * all hooks will be called from this method.
+	 *
+	 * @since    1.0.0
+	 */
 	private function hooks() {
 		add_action( 'init', array( $this, 'on_init' ) );
 		add_action( 'admin_init', array( $this, 'on_admin_init' ) );
@@ -32,6 +80,12 @@ class Udp_Agent {
 		add_action( 'init', array( $this, 'udp_schedule_cron' ) );
 	}
 
+
+	/**
+	 * Action that needs to be run on "init" hook.
+	 *
+	 * @since    1.0.0
+	 */
 	public function on_init() {
 
 		// process user tracking actions.
@@ -41,6 +95,12 @@ class Udp_Agent {
 
 	}
 	
+
+	/**
+	 * Actions that needs to be run on "admin init" hook.
+	 *
+	 * @since    1.0.0
+	 */
 	public function on_admin_init() {
 
 		$this->show_user_tracking_admin_notice();
@@ -68,6 +128,13 @@ class Udp_Agent {
 	}
 
 
+	/**
+	 * Change the value of checkbox ( in settings page ) from integer to "yes" or "no"
+	 * and store in database.
+	 *
+	 * @since    1.0.0
+	 * @param    string $data Data to modify.
+	 */
 	public function get_settings_field_val( $data ) {
 		if ( '1' === $data ) {
 			return 'yes';
@@ -82,6 +149,11 @@ class Udp_Agent {
 	// Settings page UI.
 	// ----------------------------------------------
 
+	/**
+	 * Generate markups to show in settings page.
+	 *
+	 * @since    1.0.0
+	 */
 	public function show_settings_ui() {
 		echo '<p>';
 		echo "<input type='checkbox' name='udp_agent_allow_tracking' id='udp_agent_allow_tracking' value='1'";
@@ -97,7 +169,11 @@ class Udp_Agent {
 	// Show admin notice, for collecting user data.
 	// ----------------------------------------------
 
-	// show admin notice to collect user data.
+	/**
+	 * Show admin notice to collect user data.
+	 *
+	 * @since    1.0.0
+	 */
 	public function show_user_tracking_admin_notice() {
 
 		$show_admin_notice = true;
@@ -154,8 +230,12 @@ class Udp_Agent {
 
 
 
-	// user has decided to allow or not allow user tracking.
-	// process it.
+	/**
+	 * User has decided to allow or not allow user tracking.
+	 * save this value in database.
+	 *
+	 * @since    1.0.0
+	 */
 	private function process_user_tracking_choice() {
 		$users_choice = isset( $_GET['udp-agent-allow-access'] ) ? sanitize_text_field( wp_unslash( $_GET['udp-agent-allow-access'] ) ) : '';
 
@@ -174,7 +254,12 @@ class Udp_Agent {
 
 	}
 
-	// a little helper function to show admin notice.
+
+	/**
+	 * A little helper function to show admin notice.
+	 *
+	 * @since    1.0.0
+	 */
 	private function show_admin_notice( $error_class, $msg ) {
 		
 		add_action(
@@ -191,6 +276,11 @@ class Udp_Agent {
 	// Data collection and authentication with engine.
 	// ----------------------------------------------
 
+	/**
+	 * Gather data to send to engine.
+	 *
+	 * @since    1.0.0
+	 */
 	private function get_data() {
 
 		if ( ! class_exists( 'WP_Debug_Data' ) ) {
@@ -219,9 +309,14 @@ class Udp_Agent {
 	}
 
 
-	// authenticate with engine server.
-	// get secret key from engine.
-	// run only once.
+
+	/**
+	 * Authotrize this agent to send data to engine.
+	 * get secret key from engine
+	 * run on agent activation.
+	 *
+	 * @since    1.0.0
+	 */
 	public function do_handshake() {
 
 		// secret key will be same for all agents.
@@ -255,7 +350,13 @@ class Udp_Agent {
 	}
 
 
-	// get agent name
+	
+	/**
+	 * Find agent's parent's name. It can be theme or plugin.
+	 *
+	 * @since    1.0.0
+	 * @param    string $root_dir Path to root folder of the agents parent.
+	 */
     private function find_agent_name( $root_dir ) {
 
 		if ( ! empty( $this->agent_name ) ) {
@@ -340,7 +441,11 @@ class Udp_Agent {
 	}
 
 
-	// A little helper function to do curl request.	
+	/**
+	 * A little helper function to do curl request.
+	 *
+	 * @since    1.0.0
+	 */
 	private function do_curl( $url, $data_to_send ) {
 		// open connection.
 		$ch = curl_init();

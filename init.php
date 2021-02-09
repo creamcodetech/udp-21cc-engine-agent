@@ -8,12 +8,12 @@ global $this_agent_ver, $engine_url;
 
 $engine_url     = 'https://edd.sanil.com.np';
 $this_agent_ver = 1.0;
-$root_dir       = dirname( __DIR__, 1 );
 
 // -------------------------------------------
 // Which agent to load ?
 // -------------------------------------------
 
+$root_dir             = dirname( __DIR__, 1 );
 $all_installed_agents = get_option( 'udp_installed_agents', array() );
 $this_agent_is_latest = true;
 
@@ -25,8 +25,7 @@ foreach ( $all_installed_agents as $agent_ver ) {
     }
 }
 
-// load this agent, only if it is the latest version.
-// this agent is installed.
+// load this agent, only if it is the latest version and this agent is installed.
 if ( $this_agent_is_latest && isset( $all_installed_agents[ basename( $root_dir ) ] ) ) {
 	
     if ( ! class_exists( 'Udp_Agent' ) ) {
@@ -45,13 +44,17 @@ register_activation_hook( $root_dir . DIRECTORY_SEPARATOR .  basename( $root_dir
 	
 	$root_dir = dirname( __DIR__, 1 );
 	
-	/// do handshake with engine.
-	require_once __DIR__ . '/class-udp-agent.php';
+	// authorize this agent with engine.
+	if ( ! class_exists( 'Udp_Agent' ) ) {
+		require_once __DIR__ . '/class-udp-agent.php';
+	}
 	$agent = new Udp_Agent( $this_agent_ver, $root_dir, $engine_url );
 	$agent->do_handshake();
 	
 	$installed_agents = get_option( 'udp_installed_agents', array() );
 	$installed_agents[ basename( $root_dir ) ] = $this_agent_ver;
+	
+	// register this agent locally.
 	update_option( 'udp_installed_agents', $installed_agents );
 	
 	// show admin notice if user selected "no" but new agent is installed.
@@ -71,13 +74,17 @@ add_action( 'after_switch_theme', function() {
 	
 	$root_dir = dirname( __DIR__, 1 );
 	
-	// do handshake with engine.
-	require_once __DIR__ . '/class-udp-agent.php';
+	// authorize this agent with engine.
+	if ( ! class_exists( 'Udp_Agent' ) ) {
+		require_once __DIR__ . '/class-udp-agent.php';
+	}
 	$agent = new Udp_Agent( $this_agent_ver, $root_dir, $engine_url );
 	$agent->do_handshake();
 
 	$installed_agents = get_option( 'udp_installed_agents', array() );
 	$installed_agents[ basename( $root_dir ) ] = $this_agent_ver;
+	
+	// register this agent locally.
 	update_option( 'udp_installed_agents', $installed_agents );
 	
 	// show admin notice if user selected "no" but new agent is installed.
@@ -97,7 +104,6 @@ add_action( 'after_switch_theme', function() {
 
 // for plugin.
 register_deactivation_hook( $root_dir . DIRECTORY_SEPARATOR .  basename( $root_dir ) . '.php', function () {
-	global $this_agent_ver;
 
 	$root_dir = dirname( __DIR__, 1 );
 
@@ -105,12 +111,13 @@ register_deactivation_hook( $root_dir . DIRECTORY_SEPARATOR .  basename( $root_d
 	if ( isset( $installed_agents[ basename( $root_dir ) ] ) ) {
 		unset( $installed_agents[ basename( $root_dir ) ] );
 	}
+
+	// remove this agent from the list of active agents.
 	update_option( 'udp_installed_agents', $installed_agents );
 } );
 
 // for theme.
 add_action( 'switch_theme', function () {
-	global $this_agent_ver;
 
 	$root_dir = dirname( __DIR__, 1 );
 
@@ -118,5 +125,7 @@ add_action( 'switch_theme', function () {
 	if ( isset( $installed_agents[ basename( $root_dir ) ] ) ) {
 		unset( $installed_agents[ basename( $root_dir ) ] );
 	}
+
+	// remove this agent from the list of active agents.
 	update_option( 'udp_installed_agents', $installed_agents );
 } );
