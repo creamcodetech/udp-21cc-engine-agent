@@ -6,7 +6,7 @@ global $this_agent_ver, $engine_url;
 // Config
 // -------------------------------------------
 
-$engine_url     = 'http://localhost/woocommerce';
+$engine_url     = 'https://edd.sanil.com.np';
 $this_agent_ver = 1.0;
 $root_dir       = dirname( __DIR__, 1 );
 
@@ -45,13 +45,12 @@ register_activation_hook( $root_dir . DIRECTORY_SEPARATOR .  basename( $root_dir
 	
 	$root_dir = dirname( __DIR__, 1 );
 	
-	// do handshake with engine.
-	// require_once __DIR__ . '/class-udp-agent.php';
-	// $agent = new Udp_Agent( $this_agent_ver, $root_dir, $engine_url );
-	// $agent->do_handshake();
+	/// do handshake with engine.
+	require_once __DIR__ . '/class-udp-agent.php';
+	$agent = new Udp_Agent( $this_agent_ver, $root_dir, $engine_url );
+	$agent->do_handshake();
 	
 	$installed_agents = get_option( 'udp_installed_agents', array() );
-
 	$installed_agents[ basename( $root_dir ) ] = $this_agent_ver;
 	update_option( 'udp_installed_agents', $installed_agents );
 	
@@ -73,12 +72,11 @@ add_action( 'after_switch_theme', function() {
 	$root_dir = dirname( __DIR__, 1 );
 	
 	// do handshake with engine.
-	// require_once __DIR__ . '/class-udp-agent.php';
-	// $agent = new Udp_Agent( $this_agent_ver, $root_dir, $engine_url );
-	// $agent->do_handshake();
+	require_once __DIR__ . '/class-udp-agent.php';
+	$agent = new Udp_Agent( $this_agent_ver, $root_dir, $engine_url );
+	$agent->do_handshake();
 
 	$installed_agents = get_option( 'udp_installed_agents', array() );
-	
 	$installed_agents[ basename( $root_dir ) ] = $this_agent_ver;
 	update_option( 'udp_installed_agents', $installed_agents );
 	

@@ -250,8 +250,6 @@ class Udp_Agent {
 		// save secret_key into db.
 		update_option( 'udp_agent_secret_key', $secret_key );
 
-		error_log( $secret_key );
-
 		return true;
 
 	}
@@ -329,13 +327,6 @@ class Udp_Agent {
 
 		if ( 'yes' !== $track_user ) { 
 			// do not send data.
-			return;
-		}
-
-		if ( ! $this->do_handshake() ) {
-			// trouble conneting to engine.
-			// will retry again in next cron job.
-			error_log( 'cannot connect with engine' );
 			return;
 		}
 
