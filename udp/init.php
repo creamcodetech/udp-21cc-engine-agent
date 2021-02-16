@@ -6,8 +6,8 @@ global $this_agent_ver, $engine_url;
 // Config
 // -------------------------------------------
 
-$engine_url     = 'https://edd.sanil.com.np';
-$this_agent_ver = 1.0;
+$engine_url     = 'https://udp.creamcode.org';
+$this_agent_ver = 1.0.0;
 
 // -------------------------------------------
 // Which agent to load ?
