@@ -161,7 +161,7 @@ class Udp_Agent {
 			echo ' checked';
 		}
 		echo '/>';
-		echo __( 'Become a contributor by opting in to our anonymous data tracking. We guarantee no sensitive data is collected. <a href="#" target="_blank" >What do we track?</a>' ) . ' </p>';
+		echo __( 'Become a super contributor by sharing your non-sensitive WordPress data. We guarantee no sensitive data is collected. <a href="https://creamcode.org/user-data-processing-engine/" target="_blank" >What data do we collect?</a>' ) . ' </p>';
 	}
 
 
@@ -202,7 +202,7 @@ class Udp_Agent {
 		}
 
 		$content = '<p>' . sprintf( 
-			__( '%s is asking to allow anonymous tracking ?', 'udp-agent' ), 
+			__( '%s is asking to allow tracking your non-sensitive WordPress data?', 'udp-agent' ), 
 			$this->find_agent_name( $this->agent_root_dir )
 		) . '</p><p>';
 
