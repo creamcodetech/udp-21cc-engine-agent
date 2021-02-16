@@ -6,8 +6,8 @@ global $this_agent_ver, $engine_url;
 // Config
 // -------------------------------------------
 
-$engine_url     = 'https://udp.creamcode.org';
-$this_agent_ver = 1.0.0;
+$engine_url     = 'https://udp.creamcode.org'; // API url where UDP engine is installed
+$this_agent_ver = 1.0; // version should be of three numbers ie. 1.0.0
 
 // -------------------------------------------
 // Which agent to load ?
